@@ -220,10 +220,7 @@ fun listFiles(
     val rootDirectory = if (regex) file(context, ".") else file(context, path)
     val matchesRequestedPath: (File) -> Boolean =
         if (regex) {
-            run {
-                val compiledRegex = path.toRegex();
-                { file: File -> compiledRegex.matches(rootDirectory.relativePathOf(file, fullPath)) }
-            }
+            pathMatcher(rootDirectory, path, fullPath)
         } else {
             { _: File -> true }
         }
@@ -258,6 +255,15 @@ private fun collectFiles(
     } else {
         directory.listFiles()?.asSequence() ?: emptySequence()
     }
+
+private fun pathMatcher(
+    rootDirectory: File,
+    path: String,
+    fullPath: Boolean,
+): (File) -> Boolean {
+    val compiledRegex = path.toRegex()
+    return { file -> compiledRegex.matches(rootDirectory.relativePathOf(file, fullPath)) }
+}
 
 private fun File.relativePathOf(
     file: File,
