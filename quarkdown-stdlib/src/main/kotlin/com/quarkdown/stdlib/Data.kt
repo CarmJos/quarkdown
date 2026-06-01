@@ -192,13 +192,15 @@ enum class FileSorting(
 
 /**
  * Lists the files located in a directory.
- * @param path path of the directory to list files from
+ * @param path directory path when [regex] is `false`, or a regular expression pattern when [regex] is `true`
  * @param listDirectories whether to include directories in the listing
+ * @param recursive whether to recursively list files in nested subdirectories
+ * @param regex whether [path] should be interpreted as a regular expression pattern
  * @param fullPath whether to return the absolute path of each file, rather than just the file name
  * @param sortBy criterion to sort the files by
  * @param order order to sort the files in
  * @return an unordered collection of string values, each representing a file located in the directory, with extension
- * @throws IllegalArgumentException if the directory does not exist or if the path is not a directory
+ * @throws IllegalArgumentException if the directory does not exist or if the path is not a directory when [regex] is `false`
  * @permission [Permission.ProjectRead] to list files located in the project directory
  * @permission [Permission.GlobalRead] to list files located outside the project directory
  * @see fileName to exclude the extension from file names
@@ -209,34 +211,65 @@ fun listFiles(
     @Injected context: Context,
     path: String,
     @Name("directories") listDirectories: Boolean = true,
+    @LikelyNamed recursive: Boolean = false,
+    @LikelyNamed regex: Boolean = false,
     @Name("fullpath") fullPath: Boolean = true,
     @Name("sortby") sortBy: FileSorting = FileSorting.NONE,
     @LikelyNamed order: Ordering = Ordering.ASCENDING,
 ): IterableValue<StringValue> {
-    val directory = file(context, path)
+    val rootDirectory = if (regex) file(context, ".") else file(context, path)
 
-    if (!directory.exists()) {
-        throw IllegalArgumentException("Directory $directory does not exist.")
+    if (!rootDirectory.exists()) {
+        throw IllegalArgumentException("Directory $rootDirectory does not exist.")
     }
-    if (!directory.isDirectory) {
-        throw IllegalArgumentException("Path $directory is not a directory.")
+    if (!rootDirectory.isDirectory) {
+        throw IllegalArgumentException("Path $rootDirectory is not a directory.")
     }
 
     val files =
-        directory
-            .listFiles()
-            ?.asSequence()
-            ?.filter { listDirectories || it.isFile }
-            ?.let { sortBy.sort(it, order) }
-            ?.map { if (fullPath) it.absolutePath else it.name }
-            ?.map(::StringValue)
-            ?: emptySequence()
+        collectFiles(rootDirectory, recursive)
+            .filter { listDirectories || it.isFile }
+            .filter { rootDirectory.matchesRequestedPath(it, path, regex, fullPath) }
+            .let { sortBy.sort(it, order) }
+            .map { if (fullPath) it.absolutePath else it.name }
+            .map(::StringValue)
 
     return when {
         sortBy == FileSorting.NONE -> UnorderedCollectionValue(files.toSet())
         else -> OrderedCollectionValue(files.toList())
     }
 }
+
+private fun collectFiles(
+    directory: File,
+    recursive: Boolean,
+): Sequence<File> =
+    if (recursive) {
+        directory.walkTopDown().drop(1)
+    } else {
+        directory.listFiles()?.asSequence() ?: emptySequence()
+    }
+
+private fun File.matchesRequestedPath(
+    file: File,
+    path: String,
+    regex: Boolean,
+    fullPath: Boolean,
+): Boolean =
+    !regex || path.toRegex().matches(relativePathOf(file, fullPath))
+
+private fun File.relativePathOf(
+    file: File,
+    fullPath: Boolean,
+): String =
+    if (fullPath) {
+        toPath()
+            .relativize(file.toPath())
+            .toString()
+            .replace(File.separatorChar, '/')
+    } else {
+        file.name
+    }
 
 /**
  * Retrieves the name of a file located in [path].
