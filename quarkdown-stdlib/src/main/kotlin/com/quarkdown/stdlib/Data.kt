@@ -255,8 +255,7 @@ private fun File.matchesRequestedPath(
     path: String,
     regex: Boolean,
     fullPath: Boolean,
-): Boolean =
-    !regex || path.toRegex().matches(relativePathOf(file, fullPath))
+): Boolean = !regex || path.toRegex().matches(relativePathOf(file, fullPath))
 
 private fun File.relativePathOf(
     file: File,
