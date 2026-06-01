@@ -31,6 +31,7 @@ import com.quarkdown.stdlib.internal.Ordering
 import com.quarkdown.stdlib.internal.Sorting
 import com.quarkdown.stdlib.internal.sortedBy
 import java.io.File
+import java.util.regex.PatternSyntaxException
 
 /**
  * `Data` stdlib module exporter.
@@ -222,7 +223,7 @@ fun listFiles(
         if (regex) {
             pathMatcher(rootDirectory, path, fullPath)
         } else {
-            { _: File -> true }
+            { _ -> true }
         }
 
     if (!rootDirectory.exists()) {
@@ -261,7 +262,12 @@ private fun pathMatcher(
     path: String,
     fullPath: Boolean,
 ): (File) -> Boolean {
-    val compiledRegex = path.toRegex()
+    val compiledRegex =
+        try {
+            path.toRegex()
+        } catch (_: PatternSyntaxException) {
+            throw IllegalArgumentException("Invalid regular expression pattern: $path")
+        }
     return { file -> compiledRegex.matches(rootDirectory.relativePathOf(file, fullPath)) }
 }
 

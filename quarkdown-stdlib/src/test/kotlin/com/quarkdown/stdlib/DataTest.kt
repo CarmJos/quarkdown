@@ -329,8 +329,13 @@ class DataTest {
                 sortBy = FileSorting.NAME,
             )
         val paths = files.unwrappedValue.map { it.unwrappedValue }.toList()
-        assertEquals(1, paths.size)
         assertTrue(paths.single().endsWith("listfiles${File.separator}d${File.separator}d.txt"))
+    }
+
+    @Test
+    fun `list files with invalid regex`() {
+        val exception = assertFails { listFiles(context, "[", regex = true) }
+        assertEquals("Invalid regular expression pattern: [", exception.message)
     }
 
     @Test
