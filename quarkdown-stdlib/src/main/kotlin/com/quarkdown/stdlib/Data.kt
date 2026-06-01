@@ -218,6 +218,15 @@ fun listFiles(
     @LikelyNamed order: Ordering = Ordering.ASCENDING,
 ): IterableValue<StringValue> {
     val rootDirectory = if (regex) file(context, ".") else file(context, path)
+    val matchesRequestedPath: (File) -> Boolean =
+        if (regex) {
+            run {
+                val compiledRegex = path.toRegex();
+                { file: File -> compiledRegex.matches(rootDirectory.relativePathOf(file, fullPath)) }
+            }
+        } else {
+            { _: File -> true }
+        }
 
     if (!rootDirectory.exists()) {
         throw IllegalArgumentException("Directory $rootDirectory does not exist.")
@@ -229,7 +238,7 @@ fun listFiles(
     val files =
         collectFiles(rootDirectory, recursive)
             .filter { listDirectories || it.isFile }
-            .filter { rootDirectory.matchesRequestedPath(it, path, regex, fullPath) }
+            .filter(matchesRequestedPath)
             .let { sortBy.sort(it, order) }
             .map { if (fullPath) it.absolutePath else it.name }
             .map(::StringValue)
@@ -249,13 +258,6 @@ private fun collectFiles(
     } else {
         directory.listFiles()?.asSequence() ?: emptySequence()
     }
-
-private fun File.matchesRequestedPath(
-    file: File,
-    path: String,
-    regex: Boolean,
-    fullPath: Boolean,
-): Boolean = !regex || path.toRegex().matches(relativePathOf(file, fullPath))
 
 private fun File.relativePathOf(
     file: File,
