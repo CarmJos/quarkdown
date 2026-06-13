@@ -55,7 +55,7 @@ class CodeSpanToken(
 }
 
 /**
- * A soft line break.
+ * A hard line break.
  * Example:
  * ```
  * Line 1<space><space>

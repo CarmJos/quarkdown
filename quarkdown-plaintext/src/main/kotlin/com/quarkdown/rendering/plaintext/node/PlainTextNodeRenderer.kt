@@ -33,6 +33,7 @@ import com.quarkdown.core.ast.base.inline.LineBreak
 import com.quarkdown.core.ast.base.inline.Link
 import com.quarkdown.core.ast.base.inline.ReferenceFootnote
 import com.quarkdown.core.ast.base.inline.ReferenceImage
+import com.quarkdown.core.ast.base.inline.SoftBreak
 import com.quarkdown.core.ast.base.inline.Strikethrough
 import com.quarkdown.core.ast.base.inline.Strong
 import com.quarkdown.core.ast.base.inline.StrongEmphasis
@@ -80,6 +81,7 @@ import com.quarkdown.core.ast.quarkdown.reference.CrossReference
 import com.quarkdown.core.ast.quarkdown.reference.CrossReferenceableNode
 import com.quarkdown.core.context.Context
 import com.quarkdown.core.context.localization.localizeOrNull
+import com.quarkdown.core.localization.isCJK
 import com.quarkdown.core.rendering.NodeRenderer
 import com.quarkdown.core.util.indent
 
@@ -171,6 +173,8 @@ class PlainTextNodeRenderer(
     override fun visit(node: Comment) = ""
 
     override fun visit(node: LineBreak) = "\n"
+
+    override fun visit(node: SoftBreak) = if (context.documentInfo.locale.isCJK()) "" else " "
 
     override fun visit(node: CriticalContent) = node.text
 

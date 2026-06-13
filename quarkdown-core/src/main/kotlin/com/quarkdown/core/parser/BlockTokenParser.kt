@@ -21,6 +21,8 @@ import com.quarkdown.core.ast.base.block.list.OrderedList
 import com.quarkdown.core.ast.base.block.list.TaskListItemVariant
 import com.quarkdown.core.ast.base.block.list.UnorderedList
 import com.quarkdown.core.ast.base.inline.Image
+import com.quarkdown.core.ast.base.inline.SoftBreak
+import com.quarkdown.core.ast.base.inline.Text
 import com.quarkdown.core.ast.quarkdown.block.ImageFigure
 import com.quarkdown.core.ast.quarkdown.block.Math
 import com.quarkdown.core.ast.quarkdown.block.PageBreak
@@ -84,6 +86,29 @@ class BlockTokenParser(
         context.flavor.lexerFactory
             .newInlineLexer(this)
             .tokenizeAndParse()
+            .replaceTextSoftBreaks()
+
+    /**
+     * Replaces soft line breaks (`\n`) found inside [Text] nodes
+     * with [SoftBreak] nodes, so that renderers can decide whether to insert a space
+     * depending on the document language.
+     */
+    private fun InlineContent.replaceTextSoftBreaks(): InlineContent =
+        flatMap { node ->
+            when (node) {
+                is Text -> {
+                    if (node.text.contains('\n')) {
+                        node.text
+                            .split("\n")
+                            .flatMap { part -> listOf(Text(part), SoftBreak) }
+                            .dropLast(1) // Remove trailing SoftBreak
+                    } else {
+                        listOf(node)
+                    }
+                }
+                else -> listOf(node)
+            }
+        }
 
     override fun visit(token: NewlineToken): Node = Newline
 
